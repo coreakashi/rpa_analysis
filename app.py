@@ -21,20 +21,17 @@ def carregar_dados(caminho_arquivo):
     try:
         df = pd.read_csv(caminho_arquivo)
         # --- Limpeza e conversão de tipos ---
-        # Converte a coluna 'lance máx' para um tipo numérico (float)
-        # Remove o símbolo '%' e substitui a vírgula por ponto decimal
         if 'lance máx' in df.columns:
             df['lance máx'] = df['lance máx'].astype(str).str.replace('%', '').str.replace(',', '.').astype(float)
         else:
             st.error("A coluna 'lance máx' não foi encontrada no arquivo.")
-            return pd.DataFrame() # Retorna um DataFrame vazio se a coluna não existir
+            return pd.DataFrame() 
 
-        # Garante que 'prazo rest' é um tipo numérico
         if 'prazo rest' in df.columns:
             df['prazo rest'] = pd.to_numeric(df['prazo rest'], errors='coerce').fillna(0)
         else:
             st.error("A coluna 'prazo rest' não foi encontrada no arquivo.")
-            return pd.DataFrame() # Retorna um DataFrame vazio se a coluna não existir
+            return pd.DataFrame() 
 
         return df
     except FileNotFoundError:
@@ -43,7 +40,6 @@ def carregar_dados(caminho_arquivo):
     except Exception as e:
         st.error(f"Ocorreu um erro ao carregar ou processar o arquivo: {e}")
         return None
-
 
 # --- Função para converter o DataFrame para Excel em memória ---
 def to_excel(df):
@@ -56,26 +52,27 @@ def to_excel(df):
     processed_data = output.getvalue()
     return processed_data
 
-
 # --- Carregamento dos dados ---
 df_original = carregar_dados("result.csv")
-df_original = df_original.drop('Unnamed: 0', axis=1)
 
-# Se o DataFrame não for carregado com sucesso, interrompe a execução
-if df_original is None or df_original.empty:
-    st.warning("Por favor, carregue um arquivo CSV válido para continuar.")
+# Apenas continua se o df foi carregado
+if df_original is not None:
+    if 'Unnamed: 0' in df_original.columns:
+        df_original = df_original.drop('Unnamed: 0', axis=1)
+else:
+    st.warning("Falha ao carregar 'result.csv'. A execução será interrompida.")
     st.stop()
 
+
 # --- Layout Centralizado: Imagem e Título ---
-col1, col2, col3 = st.columns([1, 2, 1]) # Divide a tela em 3 colunas para centralizar
+col1, col2, col3 = st.columns([1, 2, 1])
 
 with col2:
-    # Adicione o nome do seu arquivo de imagem aqui.
-    # A imagem deve estar na mesma pasta que o seu script.
     try:
-        st.image("a.jpeg", use_column_width=True)
+        # ALTERAÇÃO 1: Imagem com tamanho controlável. Altere o valor de 'width' como desejar.
+        st.image("a.jpeg", width=300)
     except Exception:
-        st.warning("Arquivo 'imagem.png' não encontrado. Coloque um arquivo de imagem no diretório para exibi-lo aqui.")
+        st.warning("Arquivo 'a.jpeg' não encontrado. Coloque um arquivo de imagem no diretório para exibi-lo aqui.")
 
     st.title("Agente AI para Análise de Dados")
 
@@ -83,18 +80,20 @@ with col2:
 # --- Barra Lateral (Sidebar) para Filtros e Ordenação ---
 st.sidebar.header("Opções de Filtro e Ordenação")
 
-# Clonar o dataframe para manipulação
 df_filtrado = df_original.copy()
 
 # --- Filtro: Prazo Restante ---
 st.sidebar.subheader("Filtrar por 'Prazo Restante'")
+# ALTERAÇÃO 2.1: Adicionadas novas opções e definidos os valores padrão para o filtro de prazo.
+opcoes_prazo = ["Nenhum", "Maior que", "Menor que", "Igual a", "Menor ou igual a", "Maior ou igual a"]
 operador_prazo = st.sidebar.selectbox(
     "Condição para o prazo:",
-    ["Nenhum", "Maior que", "Menor que", "Igual a"],
+    opcoes_prazo,
+    index=5, # Define "Menor ou igual a" como padrão
     key="op_prazo"
 )
 if operador_prazo != "Nenhum":
-    valor_prazo = st.sidebar.number_input("Valor do prazo:", step=1, key="val_prazo")
+    valor_prazo = st.sidebar.number_input("Valor do prazo:", step=1, value=25, key="val_prazo") # Define 25 como padrão
 
     if operador_prazo == "Maior que":
         df_filtrado = df_filtrado[df_filtrado['prazo rest'] > valor_prazo]
@@ -102,17 +101,24 @@ if operador_prazo != "Nenhum":
         df_filtrado = df_filtrado[df_filtrado['prazo rest'] < valor_prazo]
     elif operador_prazo == "Igual a":
         df_filtrado = df_filtrado[df_filtrado['prazo rest'] == valor_prazo]
+    elif operador_prazo == "Menor ou igual a":
+        df_filtrado = df_filtrado[df_filtrado['prazo rest'] <= valor_prazo]
+    elif operador_prazo == "Maior ou igual a":
+        df_filtrado = df_filtrado[df_filtrado['prazo rest'] >= valor_prazo]
 
 
 # --- Filtro: % Lance Máximo ---
 st.sidebar.subheader("Filtrar por 'lance máx'")
+# ALTERAÇÃO 2.2: Adicionadas novas opções e definidos os valores padrão para o filtro de lance.
+opcoes_lance = ["Nenhum", "Maior que", "Menor que", "Igual a", "Menor ou igual a", "Maior ou igual a"]
 operador_lance = st.sidebar.selectbox(
     "Condição para o lance:",
-    ["Nenhum", "Maior que", "Menor que", "Igual a"],
+    opcoes_lance,
+    index=4, # Define "Menor ou igual a" como padrão
     key="op_lance"
 )
 if operador_lance != "Nenhum":
-    valor_lance = st.sidebar.number_input("Valor do % de lance (ex: 50.5):", step=0.1, format="%.2f", key="val_lance")
+    valor_lance = st.sidebar.number_input("Valor do % de lance (ex: 50.5):", step=0.1, value=27.0, format="%.2f", key="val_lance") # Define 27.0 como padrão
 
     if operador_lance == "Maior que":
         df_filtrado = df_filtrado[df_filtrado['lance máx'] > valor_lance]
@@ -120,6 +126,10 @@ if operador_lance != "Nenhum":
         df_filtrado = df_filtrado[df_filtrado['lance máx'] < valor_lance]
     elif operador_lance == "Igual a":
         df_filtrado = df_filtrado[df_filtrado['lance máx'] == valor_lance]
+    elif operador_lance == "Menor ou igual a":
+        df_filtrado = df_filtrado[df_filtrado['lance máx'] <= valor_lance]
+    elif operador_lance == "Maior ou igual a":
+        df_filtrado = df_filtrado[df_filtrado['lance máx'] >= valor_lance]
 
 
 # --- Ordenação ---
@@ -127,7 +137,7 @@ st.sidebar.subheader("Ordenar Tabela")
 colunas_ordenacao = st.sidebar.multiselect(
     "Ordenar por:",
     options=['prazo rest', 'lance máx'],
-    default=[] # Opcional: defina uma coluna padrão para ordenação
+    default=[] 
 )
 
 ordem_ascendente = st.sidebar.radio(
@@ -152,8 +162,7 @@ st.dataframe(df_filtrado, use_container_width=True)
 if not df_filtrado.empty:
     st.subheader("Download dos Dados")
     st.markdown("Baixe a tabela (com os filtros aplicados) em formato Excel.")
-
-    # Converte o dataframe filtrado para o formato Excel
+    
     dados_excel = to_excel(df_filtrado)
 
     st.download_button(

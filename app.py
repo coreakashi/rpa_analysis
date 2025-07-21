@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import base64
 import io
 
 import warnings
@@ -7,7 +8,7 @@ warnings.filterwarnings("ignore")
 
 # --- Configurações da Página ---
 st.set_page_config(
-    page_title="Agente AI - Análise de Dados",
+    # page_title="Agente AI - Análise de Dados",
     page_icon="📊",
     layout="wide"
 )
@@ -65,16 +66,27 @@ else:
 
 
 # --- Layout Centralizado: Imagem e Título ---
-col1, col2, col3 = st.columns([1, 2, 1])
 
-with col2:
-    try:
-        # ALTERAÇÃO 1: Imagem com tamanho controlável. Altere o valor de 'width' como desejar.
-        st.image("a.jpeg", width=300)
-    except Exception:
-        st.warning("Arquivo 'a.jpeg' não encontrado. Coloque um arquivo de imagem no diretório para exibi-lo aqui.")
+# --- Layout Centralizado: Imagem e Título (CORRIGIDO) ---
+try:
+    # 1. Abre o arquivo da imagem em modo de leitura binária
+    with open("a.jpeg", "rb") as f:
+        contents = f.read()
+        data_url = base64.b64encode(contents).decode("utf-8")
 
-    st.title("Agente AI para Análise de Dados")
+    # 2. Monta o HTML para o título (h1) e a imagem (img), ambos centralizados
+    html_content = f"""
+    <h1 style="text-align: center;">Agente AI para Análise de Dados</h1>
+    <div style="display: flex; justify-content: center;">
+        <img src="data:image/jpeg;base64,{data_url}" alt="logo" width="300">
+    </div>
+    """
+
+    # 3. Renderiza o HTML combinado de uma só vez
+    st.markdown(html_content, unsafe_allow_html=True)
+
+except FileNotFoundError:
+    st.warning("Arquivo 'a.jpeg' não encontrado.")
 
 
 # --- Barra Lateral (Sidebar) para Filtros e Ordenação ---
@@ -89,11 +101,12 @@ opcoes_prazo = ["Nenhum", "Maior que", "Menor que", "Igual a", "Menor ou igual a
 operador_prazo = st.sidebar.selectbox(
     "Condição para o prazo:",
     opcoes_prazo,
-    index=5, # Define "Menor ou igual a" como padrão
+    # index=5, # Define "Menor ou igual a" como padrão
     key="op_prazo"
 )
 if operador_prazo != "Nenhum":
-    valor_prazo = st.sidebar.number_input("Valor do prazo:", step=1, value=25, key="val_prazo") # Define 25 como padrão
+    # valor_prazo = st.sidebar.number_input("Valor do prazo:", step=1, value=25, key="val_prazo") # Define 25 como padrão
+    valor_prazo = st.sidebar.number_input("Valor do prazo:", step=1, key="val_prazo") # Define 25 como padrão
 
     if operador_prazo == "Maior que":
         df_filtrado = df_filtrado[df_filtrado['prazo rest'] > valor_prazo]
@@ -114,11 +127,12 @@ opcoes_lance = ["Nenhum", "Maior que", "Menor que", "Igual a", "Menor ou igual a
 operador_lance = st.sidebar.selectbox(
     "Condição para o lance:",
     opcoes_lance,
-    index=4, # Define "Menor ou igual a" como padrão
+    # index=4, # Define "Menor ou igual a" como padrão
     key="op_lance"
 )
 if operador_lance != "Nenhum":
-    valor_lance = st.sidebar.number_input("Valor do % de lance (ex: 50.5):", step=0.1, value=27.0, format="%.2f", key="val_lance") # Define 27.0 como padrão
+    # valor_lance = st.sidebar.number_input("Valor do % de lance (ex: 50.5):", step=0.1, value=27.0, format="%.2f", key="val_lance") # Define 27.0 como padrão
+    valor_lance = st.sidebar.number_input("Valor do % de lance (ex: 50.5):", step=0.1, key="val_lance") # Define 27.0 como padrão
 
     if operador_lance == "Maior que":
         df_filtrado = df_filtrado[df_filtrado['lance máx'] > valor_lance]
